@@ -1,9 +1,16 @@
 package cmd
 
 import (
-	"fmt"
+	"context"
+	"log"
 
 	"github.com/spf13/cobra"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/kubectl/pkg/cmd/util"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // nodeCmd represents the node command
@@ -16,8 +23,38 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("node called")
+	RunE: func(cmd *cobra.Command, args []string) error {
+		kubeConfigFlags := genericclioptions.NewConfigFlags(true)
+		kubeConfigFlags.AddFlags(cmd.PersistentFlags())
+
+		factory := util.NewFactory(util.NewMatchVersionFlags(kubeConfigFlags))
+		config, err := factory.ToRESTConfig()
+		if err != nil {
+			return err
+		}
+
+		scheme := runtime.NewScheme()
+		err = clientgoscheme.AddToScheme(scheme)
+		if err != nil {
+			return err
+		}
+
+		kubeClient, err := client.New(config, client.Options{Scheme: scheme})
+		if err != nil {
+			return err
+		}
+
+		var nodes corev1.NodeList
+		err = kubeClient.List(context.Background(), &nodes, &client.ListOptions{})
+		if err != nil {
+			return err
+		}
+
+		for _, node := range nodes.Items {
+			log.Println(node.Name)
+		}
+
+		return nil
 	},
 }
 
