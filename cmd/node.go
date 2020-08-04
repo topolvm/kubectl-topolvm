@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/topolvm/topolvm"
+	topolvmv1 "github.com/topolvm/topolvm/api/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -41,6 +42,11 @@ to quickly create a Cobra application.`,
 			return err
 		}
 
+		err = topolvmv1.AddToScheme(scheme)
+		if err != nil {
+			return err
+		}
+
 		kubeClient, err := client.New(config, client.Options{Scheme: scheme})
 		if err != nil {
 			return err
@@ -48,6 +54,12 @@ to quickly create a Cobra application.`,
 
 		var nodes corev1.NodeList
 		err = kubeClient.List(context.Background(), &nodes, &client.ListOptions{})
+		if err != nil {
+			return err
+		}
+
+		var lvs topolvmv1.LogicalVolumeList
+		err = kubeClient.List(context.Background(), &lvs, &client.ListOptions{})
 		if err != nil {
 			return err
 		}
@@ -60,6 +72,10 @@ to quickly create a Cobra application.`,
 					log.Printf("device class %s, remain %s", devClassName, val)
 				}
 			}
+		}
+
+		for _, lv := range lvs.Items {
+			log.Printf("node %s, device class %s, current_size %s", lv.Spec.NodeName, lv.Spec.DeviceClass, lv.Status.CurrentSize)
 		}
 
 		return nil
