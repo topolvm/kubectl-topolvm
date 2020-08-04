@@ -3,8 +3,10 @@ package cmd
 import (
 	"context"
 	"log"
+	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/topolvm/topolvm"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -52,6 +54,12 @@ to quickly create a Cobra application.`,
 
 		for _, node := range nodes.Items {
 			log.Println(node.Name)
+			for key, val := range node.Annotations {
+				if strings.HasPrefix(key, topolvm.CapacityKeyPrefix) {
+					devClassName := strings.Split(key, "/")[1]
+					log.Printf("device class %s, remain %s", devClassName, val)
+				}
+			}
 		}
 
 		return nil
