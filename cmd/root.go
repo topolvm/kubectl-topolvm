@@ -4,28 +4,49 @@ import (
 	"fmt"
 	"os"
 
-	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
+	topolvmv1 "github.com/topolvm/topolvm/api/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/kubectl/pkg/cmd/util"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var cfgFile string
+var kubeClient client.Client
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "kubectl-topolvm",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
+	Short: "the utility command for TopoLVM",
+	Long:  "the utility command for TopoLVM",
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		kubeConfigFlags := genericclioptions.NewConfigFlags(true)
+		kubeConfigFlags.AddFlags(cmd.PersistentFlags())
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
+		factory := util.NewFactory(util.NewMatchVersionFlags(kubeConfigFlags))
+		config, err := factory.ToRESTConfig()
+		if err != nil {
+			return err
+		}
 
-  // Uncomment the following line if your bare application
-  // has an action associated with it:`,
+		scheme := runtime.NewScheme()
+		err = clientgoscheme.AddToScheme(scheme)
+		if err != nil {
+			return err
+		}
 
-	Run: func(cmd *cobra.Command, args []string) {
+		err = topolvmv1.AddToScheme(scheme)
+		if err != nil {
+			return err
+		}
 
+		kubeClient, err = client.New(config, client.Options{Scheme: scheme})
+		if err != nil {
+			return err
+		}
+
+		return nil
 	},
 }
 
@@ -35,45 +56,5 @@ func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
-	}
-}
-
-func init() {
-	cobra.OnInitialize(initConfig)
-
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
-
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.kubectl-topolvm.yaml)")
-
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-}
-
-// initConfig reads in config file and ENV variables if set.
-func initConfig() {
-	if cfgFile != "" {
-		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
-	} else {
-		// Find home directory.
-		home, err := homedir.Dir()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		// Search config in home directory with name ".kubectl-topolvm" (without extension).
-		viper.AddConfigPath(home)
-		viper.SetConfigName(".kubectl-topolvm")
-	}
-
-	viper.AutomaticEnv() // read in environment variables that match
-
-	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
 	}
 }
