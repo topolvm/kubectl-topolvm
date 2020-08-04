@@ -2,8 +2,12 @@ package cmd
 
 import (
 	"context"
-	"log"
+	"fmt"
+	"os"
+	"strconv"
 	"strings"
+
+	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 	"github.com/topolvm/topolvm"
@@ -64,19 +68,50 @@ to quickly create a Cobra application.`,
 			return err
 		}
 
+		w := new(tabwriter.Writer)
+		w.Init(os.Stdout, 0, 8, 0, '\t', 0)
+		fmt.Fprintln(w, "NODE\tDEVICECLASS\tUSED\tAVAILABLE\tUSE%")
+
+		sizeMap := make(map[string]map[string]int64)
+
+		for _, lv := range lvs.Items {
+			nodeName := lv.Spec.NodeName
+			deviceClass := lv.Spec.DeviceClass
+			currentSize := lv.Status.CurrentSize
+
+			if _, ok := sizeMap[nodeName]; !ok {
+				sizeMap[nodeName] = make(map[string]int64)
+			}
+
+			if deviceClass == "" {
+				deviceClass = topolvm.DefaultDeviceClassAnnotationName
+			}
+
+			sizeMap[nodeName][deviceClass] += currentSize.Value()
+		}
+
 		for _, node := range nodes.Items {
-			log.Println(node.Name)
+			nodeName := node.Name
 			for key, val := range node.Annotations {
 				if strings.HasPrefix(key, topolvm.CapacityKeyPrefix) {
 					devClassName := strings.Split(key, "/")[1]
-					log.Printf("device class %s, remain %s", devClassName, val)
+					usedRate := int64(0)
+					available, err := strconv.ParseInt(val, 10, 64)
+					if err != nil {
+						return err
+					}
+					used := sizeMap[nodeName][devClassName]
+					capacity := available + used
+					if capacity != 0 {
+						usedRate = used * 100 / capacity
+					}
+
+					fmt.Fprintf(w, "%s\t%s\t%d\t%d\t%d%%\n", nodeName, devClassName, used, available, usedRate)
 				}
 			}
 		}
 
-		for _, lv := range lvs.Items {
-			log.Printf("node %s, device class %s, current_size %s", lv.Spec.NodeName, lv.Spec.DeviceClass, lv.Status.CurrentSize)
-		}
+		w.Flush()
 
 		return nil
 	},
