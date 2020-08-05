@@ -2,6 +2,9 @@ K8S_VER=1.18.6
 ETCD_VER=3.3.22
 TESTBIN_DIR=bin
 
+test:
+	KUBEBUILDER_ASSETS=$(CURDIR)/$(TESTBIN_DIR) go test ./...
+
 setup:
 	# install kube-api binary
 	mkdir -p $(TESTBIN_DIR)
@@ -12,7 +15,7 @@ setup:
 	mv tmp/kubernetes/_output/bin/kube-apiserver $(TESTBIN_DIR)
 	rm -rf tmp
 	# install etcd binary
-	curl -L https://github.com/etcd-io/etcd/releases/download/v$(ETCD_VER)/etcd-v$(ETCD_VER)-linux-amd64.tar.gz | tar zx -C $(TESTBIN_DIR) --strip-components=1 etcd-$(ETCD_VER)-linux-amd64/etcd
+	curl -L https://storage.googleapis.com/etcd/v$(ETCD_VER)/etcd-v$(ETCD_VER)-linux-amd64.tar.gz | tar zx -C $(TESTBIN_DIR) --strip-components=1 etcd-v$(ETCD_VER)-linux-amd64/etcd
 	# install kubectl binary
 	curl -LO https://storage.googleapis.com/kubernetes-release/release/v$(K8S_VER)/bin/linux/amd64/kubectl
 	chmod +x ./kubectl
