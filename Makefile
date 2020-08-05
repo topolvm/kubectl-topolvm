@@ -1,9 +1,12 @@
 K8S_VER=1.18.6
 ETCD_VER=3.3.22
+TOPOLVM_VER=0.5.2
 TESTBIN_DIR=bin
+CRD_DIR=crd
+TOPOLVM_CRD=$(CRD_DIR)/topolvm.cybozu.com_logicalvolumes.yaml
 
-test:
-	KUBEBUILDER_ASSETS=$(CURDIR)/$(TESTBIN_DIR) go test ./...
+test: $(TOPOLVM_CRD)
+	KUBEBUILDER_ASSETS=$(CURDIR)/$(TESTBIN_DIR) go test -v ./...
 
 setup:
 	# install kube-api binary
@@ -20,3 +23,7 @@ setup:
 	curl -LO https://storage.googleapis.com/kubernetes-release/release/v$(K8S_VER)/bin/linux/amd64/kubectl
 	chmod +x ./kubectl
 	mv ./kubectl $(TESTBIN_DIR)/kubectl
+
+$(TOPOLVM_CRD):
+	mkdir -p $(CRD_DIR)
+	curl -L -o $(TOPOLVM_CRD) https://raw.githubusercontent.com/topolvm/topolvm/v$(TOPOLVM_VER)/config/crd/bases/topolvm.cybozu.com_logicalvolumes.yaml

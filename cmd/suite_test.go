@@ -1,11 +1,17 @@
 package cmd
 
 import (
+	"context"
+	"fmt"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"k8s.io/client-go/kubernetes/scheme"
+	topolvmv1 "github.com/topolvm/topolvm/api/v1"
+
+	extensionv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	"k8s.io/apimachinery/pkg/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
@@ -30,17 +36,38 @@ var _ = BeforeSuite(func(done Done) {
 	logf.SetLogger(zap.LoggerTo(GinkgoWriter, true))
 
 	By("bootstrapping test environment")
-	testEnv = &envtest.Environment{}
+	testEnv = &envtest.Environment{
+		CRDDirectoryPaths: []string{"../crd"},
+	}
 
 	var err error
 	cfg, err = testEnv.Start()
 	Expect(err).ToNot(HaveOccurred())
 	Expect(cfg).ToNot(BeNil())
 
+	scheme := runtime.NewScheme()
+	err = clientgoscheme.AddToScheme(scheme)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = topolvmv1.AddToScheme(scheme)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = extensionv1beta1.AddToScheme(scheme)
+	Expect(err).ToNot(HaveOccurred())
+
 	k8sClient, err = client.New(cfg, client.Options{
-		Scheme: scheme.Scheme,
+		Scheme: scheme,
 	})
 	Expect(err).ToNot(HaveOccurred())
+
+	var crds extensionv1beta1.CustomResourceDefinitionList
+	err = k8sClient.List(context.Background(), &crds, &client.ListOptions{})
+	Expect(err).ToNot(HaveOccurred())
+
+	for _, crd := range crds.Items {
+		// ctrl.Log.Info("output crd: ", "crd", crd.Name)
+		fmt.Println(crd.Name)
+	}
 
 	close(done)
 }, 60)
