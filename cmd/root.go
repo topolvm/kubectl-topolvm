@@ -19,7 +19,7 @@ var kubeClient client.Client
 var rootCmd = &cobra.Command{
 	Use:   "kubectl-topolvm",
 	Short: "the utility command for TopoLVM",
-	Long:  "the utility command for TopoLVM",
+	Long:  "the utility command for TopoLVM.",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		kubeConfigFlags := genericclioptions.NewConfigFlags(true)
 		kubeConfigFlags.AddFlags(cmd.PersistentFlags())
