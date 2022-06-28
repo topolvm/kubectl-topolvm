@@ -3,7 +3,7 @@
 
 # kubectl-topolvm
 
-**🚧 Under development**
+**🧊 Archived**
 
 The utility command for TopoLVM.
 
